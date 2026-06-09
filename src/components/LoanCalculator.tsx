@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getAdminFee, type AdminFeeOption } from '@/lib/adminFeeTable';
 
 // Business rules for deduction rates
 const getDeductionRate = (term: number, method: string): number => {
@@ -11,33 +12,6 @@ const getDeductionRate = (term: number, method: string): number => {
     return method === 'Salary Deduction' ? 0.0376 : 0.041;
   } else if (term >= 9 && term <= 12) {
     return method === 'Salary Deduction' ? 0.0261 : 0.0279;
-  }
-  return 0;
-};
-
-// Business rules for admin fees - expanded table
-const getAdminFee = (priceMmk: number, method: string): number => {
-  const adminFeeRanges = [
-    { max: 100000, salary: 5000, yoma: 5300 },
-    { max: 300000, salary: 8000, yoma: 8400 },
-    { max: 500000, salary: 13500, yoma: 14200 },
-    { max: 1000000, salary: 18500, yoma: 19500 },
-    { max: 2000000, salary: 30000, yoma: 31500 },
-    { max: 3000000, salary: 45000, yoma: 47300 },
-    { max: 4000000, salary: 60000, yoma: 63000 },
-    { max: 5000000, salary: 80000, yoma: 84000 },
-    { max: 6000000, salary: 100000, yoma: 105000 },
-    { max: 7000000, salary: 140000, yoma: 147000 },
-    { max: 8000000, salary: 160000, yoma: 168000 },
-    { max: 10000000, salary: 180000, yoma: 189000 },
-    { max: 20000000, salary: 230000, yoma: 241500 },
-    { max: Infinity, salary: 400000, yoma: 420000 },
-  ];
-
-  for (const range of adminFeeRanges) {
-    if (priceMmk <= range.max) {
-      return method === 'Salary Deduction' ? range.salary : range.yoma;
-    }
   }
   return 0;
 };
@@ -54,6 +28,7 @@ const EXCHANGE_RATES: Record<string, number> = {
 const LoanCalculator = () => {
   const [term, setTerm] = useState<number>(3);
   const [method, setMethod] = useState<string>('Salary Deduction');
+  const [adminFeeOption, setAdminFeeOption] = useState<AdminFeeOption>('option1');
   const [currency, setCurrency] = useState<string>('MMK');
   const [productPrice, setProductPrice] = useState<string>('');
   const [depositAmount, setDepositAmount] = useState<string>('');
@@ -120,7 +95,7 @@ useEffect(() => {
       return;
     }
 
-    const adminFee = getAdminFee(priceMmk, method);
+    const adminFee = getAdminFee(priceMmk, adminFeeOption);
     const principal = Math.max(0, priceMmk - depositMmk); // amount to finance
     const deductionRate = getDeductionRate(term, method); // decimal per-period rate
 
@@ -146,7 +121,7 @@ useEffect(() => {
   // Auto-calculate when inputs change
   useEffect(() => {
     calculateLoan();
-  }, [term, method, priceMmk, depositMmk]);
+  }, [term, method, adminFeeOption, priceMmk, depositMmk]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -186,6 +161,24 @@ useEffect(() => {
                   <SelectItem value="6" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">6 months</SelectItem>
                   <SelectItem value="9" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">9 months</SelectItem>
                   <SelectItem value="12" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">12 months</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Admin Fee Option */}
+            <div className="space-y-4 group">
+              <Label htmlFor="adminFeeOption" className="text-sm font-semibold text-foreground">
+                Choose Option
+              </Label>
+              <Select value={adminFeeOption} onValueChange={(value) => setAdminFeeOption(value as AdminFeeOption)}>
+                <SelectTrigger className="glass-input h-14 text-base text-foreground border-2 border-transparent hover:border-primary/30 transition-all duration-300">
+                  <SelectValue placeholder="Select option" />
+                </SelectTrigger>
+                <SelectContent className="glass-card border-0 backdrop-blur-xl shadow-2xl">
+                  <SelectItem value="option1" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">Salary Deduction Option 1</SelectItem>
+                  <SelectItem value="option2" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">Salary Deduction Option 2</SelectItem>
+                  <SelectItem value="option3" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">Salary Deduction Option 3</SelectItem>
+                  <SelectItem value="optionYB" className="text-base py-4 text-foreground hover:bg-primary/10 rounded-lg m-1">Yoma Bank Deduction</SelectItem>
                 </SelectContent>
               </Select>
             </div>
