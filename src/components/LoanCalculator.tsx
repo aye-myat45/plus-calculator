@@ -6,12 +6,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getAdminFee, type AdminFeeOption } from '@/lib/adminFeeTable';
 
-// Business rules for deduction rates
-const getDeductionRate = (term: number, method: string): number => {
+// Business rules for deduction rates based on admin fee option and term
+const getDeductionRate = (term: number, option: AdminFeeOption): number => {
   if (term >= 3 && term <= 6) {
-    return method === 'Salary Deduction' ? 0.0376 : 0.041;
+    switch (option) {
+      case 'option1': return 0.0376;
+      case 'option2': return 0.0427;
+      case 'option3': return 0.0517;
+      case 'optionYB': return 0.0410;
+      default: return 0;
+    }
   } else if (term >= 9 && term <= 12) {
-    return method === 'Salary Deduction' ? 0.0261 : 0.0279;
+    switch (option) {
+      case 'option1': return 0.0261;
+      case 'option2': return 0.0296;
+      case 'option3': return 0.0392;
+      case 'optionYB': return 0.0279;
+      default: return 0;
+    }
   }
   return 0;
 };
@@ -53,40 +65,27 @@ const LoanCalculator = () => {
     }
   }, [productPrice, currency]);
 
-  // Update MMK deposit when currency or deposit amount changes
-  // useEffect(() => {
-  //   if (depositAmount && !isNaN(Number(depositAmount))) {
-  //     const converted = Number(depositAmount) * EXCHANGE_RATES[currency];
-  //     setDepositMmk(converted);
-  //   } else {
-  //     setDepositMmk(0);
-  //   }
-  // }, [depositAmount, currency]);
-
   // Update deposit MMK when deposit % or product price changes
-useEffect(() => {
-  if (depositAmount && !isNaN(Number(depositAmount))) {
-    const percent = Number(depositAmount) / 100;
-    const converted = priceMmk * percent; // % of product price in MMK
-    setDepositMmk(converted);
-  } else {
-    setDepositMmk(0);
-  }
-}, [depositAmount, priceMmk]);
+  useEffect(() => {
+    if (depositAmount && !isNaN(Number(depositAmount))) {
+      const percent = Number(depositAmount) / 100;
+      const converted = priceMmk * percent; // % of product price in MMK
+      setDepositMmk(converted);
+    } else {
+      setDepositMmk(0);
+    }
+  }, [depositAmount, priceMmk]);
 
-
-  // Helper function to round down to nearest 1000 (4 digits)
-  const roundDownToNearest1000 = (num: number): number => {
+  // Helper function to round down to nearest 10000 (4 digits)
+  const roundDownToNearest10000 = (num: number): number => {
     return Math.floor(num / 10000) * 10000;
   };
 
   const pmt = (rate: number, nper: number, pv: number) => {
-  // rate should be a decimal per-period rate (e.g. 0.0376)
-  if (nper === 0) return 0;
-  if (rate === 0) return pv / nper;
-  return (pv * rate) / (1 - Math.pow(1 + rate, -nper));
-};
-
+    if (nper === 0) return 0;
+    if (rate === 0) return pv / nper;
+    return (pv * rate) / (1 - Math.pow(1 + rate, -nper));
+  };
 
   // Calculate based on new formula
   const calculateLoan = () => {
@@ -97,17 +96,16 @@ useEffect(() => {
 
     const adminFee = getAdminFee(priceMmk, adminFeeOption);
     const principal = Math.max(0, priceMmk - depositMmk); // amount to finance
-    const deductionRate = getDeductionRate(term, method); // decimal per-period rate
+    const deductionRate = getDeductionRate(term, adminFeeOption); // decimal per-period rate based on option
 
-    // Use PMT for both methods (user requested PMT for both)
+    // Use PMT for both methods
     const monthlyRepayment = pmt(deductionRate, term, principal);
 
     const totalPaid = monthlyRepayment * term;
     // total interest (excluding admin fee) = totalPaid - principal - adminFee
     const totalInterest = Math.max(0, totalPaid - principal - adminFee);
 
-    const minSalaryRequirement = roundDownToNearest1000(monthlyRepayment / 0.20);
-    
+    const minSalaryRequirement = roundDownToNearest10000(monthlyRepayment / 0.20);
 
     setResults({
       monthlyRepayment,
@@ -131,7 +129,7 @@ useEffect(() => {
   };
 
   return (
-     <div className="w-full max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center title-card">
         <h1 className="text-4xl font-bold text-foreground mb-4">PLUS+ Calculator</h1>
@@ -140,7 +138,7 @@ useEffect(() => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Input Form */}
-        <Card className="glass-card border-0"> {/* animate-fade-in animation-delay-200 hover-scale */}
+        <Card className="glass-card border-0">
           <CardHeader className="pb-6 text-center">
             <CardTitle className="text-2xl font-bold text-foreground">
               BNPL Configuration
@@ -183,7 +181,7 @@ useEffect(() => {
               </Select>
             </div>
 
-            {/* Repayment Method */}
+            {/* Repayment Method (UI only, not used for rate) */}
             <div className="space-y-4 group">
               <Label htmlFor="method" className="text-sm font-semibold text-foreground">
                 Choose Monthly Repayment Method
@@ -204,7 +202,6 @@ useEffect(() => {
               <Label htmlFor="currency" className="text-sm font-semibold text-foreground">
                 Currency
               </Label>
-              
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger className="glass-input h-14 text-base text-foreground border-2 border-transparent hover:border-accent/30 transition-all duration-300">
                   <SelectValue placeholder="Select currency" />
@@ -215,48 +212,45 @@ useEffect(() => {
                   <SelectItem value="EUR" className="text-base py-4 text-foreground hover:bg-accent/10 rounded-lg m-1">EUR</SelectItem>
                   <SelectItem value="SGD" className="text-base py-4 text-foreground hover:bg-accent/10 rounded-lg m-1">SGD</SelectItem>
                   <SelectItem value="THB" className="text-base py-4 text-foreground hover:bg-accent/10 rounded-lg m-1">THB</SelectItem> */}
-                  
                 </SelectContent>
               </Select>
             </div>
 
-           {/* Deposit Selection */}
-{/* Deposit Selection */}
-<div className="space-y-4 group">
-  <Label htmlFor="deposit" className="text-sm font-semibold text-foreground">
-    Deposit (% of Product Price)
-  </Label>
-  <Select
-    value={depositAmount}
-    onValueChange={(value) => {
-      setDepositAmount(value); // store percentage string
-    }}
-  >
-    <SelectTrigger className="glass-input h-14 text-base text-foreground border-2 border-transparent hover:border-primary/30 transition-all duration-300">
-      <SelectValue placeholder="Select deposit %" />
-    </SelectTrigger>
-    <SelectContent className="glass-card border-0 backdrop-blur-xl shadow-2xl">
-      {[0,5,10,15, 20,25, 30,35, 40,45, 50, 55,60,65, 70].map((percent) => (
-        <SelectItem key={percent} value={percent.toString()}>
-          {percent}%
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
+            {/* Deposit Selection */}
+            <div className="space-y-4 group">
+              <Label htmlFor="deposit" className="text-sm font-semibold text-foreground">
+                Deposit (% of Product Price)
+              </Label>
+              <Select
+                value={depositAmount}
+                onValueChange={(value) => {
+                  setDepositAmount(value);
+                }}
+              >
+                <SelectTrigger className="glass-input h-14 text-base text-foreground border-2 border-transparent hover:border-primary/30 transition-all duration-300">
+                  <SelectValue placeholder="Select deposit %" />
+                </SelectTrigger>
+                <SelectContent className="glass-card border-0 backdrop-blur-xl shadow-2xl">
+                  {[0,5,10,15,20,25,30,35,40,45,50,55,60,65,70].map((percent) => (
+                    <SelectItem key={percent} value={percent.toString()}>
+                      {percent}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-  {/* Show Deposit Value in MMK */}
-  {depositMmk > 0 && (
-    <div className="glass-input p-4 flex justify-between items-center border-2 border-transparent hover:border-primary/20 transition-all duration-300">
-      <span className="text-sm font-semibold text-foreground">
-        Total Deposit Amount
-      </span>
-      <span className="text-base font-bold text-foreground">
-        {formatCurrency(depositMmk)} MMK
-      </span>
-    </div>
-  )}
-</div>
-
+              {/* Show Deposit Value in MMK */}
+              {depositMmk > 0 && (
+                <div className="glass-input p-4 flex justify-between items-center border-2 border-transparent hover:border-primary/20 transition-all duration-300">
+                  <span className="text-sm font-semibold text-foreground">
+                    Total Deposit Amount
+                  </span>
+                  <span className="text-base font-bold text-foreground">
+                    {formatCurrency(depositMmk)} MMK
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Product Price */}
             <div className="space-y-4 group">
@@ -277,37 +271,23 @@ useEffect(() => {
                 </span>
               </div>
             </div>
-           
-
-            {/* Price in MMK (Auto-calculated) */}
-            {/* <div className="space-y-3">
-              <Label className="text-sm font-semibold text-white">Price in MMK</Label>
-              <div className="glass-input p-4 bg-gradient-to-r from-white/10 to-white/5 border border-white/30 hover-scale">
-                <span className="text-lg font-bold text-white">
-                  {formatCurrency(priceMmk)} MMK
-                </span>
-              </div>
-            </div> */}
           </CardContent>
         </Card>
 
         {/* Results */}
-         <Card className="glass-card border-0">  {/*animate-fade-in animation-delay-400 hover-scale */}
+        <Card className="glass-card border-0">
           <CardHeader className="pb-6 text-center">
             <CardTitle className="text-2xl font-bold text-foreground">
               Calculation Results
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
-            
-
             <div className="space-y-6">
               <div className="glass-input p-6 flex justify-between items-center group border-2 border-transparent hover:border-accent/20 transition-all duration-300">
                 <Label className="text-base font-bold text-foreground">Product Price (MMK)</Label>
                 <span className="font-bold text-xl text-foreground">{formatCurrency(priceMmk)} MMK</span>
               </div>
               
-             
               <div className="glass-input p-6 flex justify-between items-center group border-2 border-transparent hover:border-primary/20 transition-all duration-300">
                 <div>
                   <Label className="text-base font-bold text-foreground block">Admin Fee</Label>
