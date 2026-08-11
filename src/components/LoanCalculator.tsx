@@ -166,7 +166,7 @@ const LoanCalculator = () => {
             {/* Admin Fee Option */}
             <div className="space-y-4 group">
               <Label htmlFor="adminFeeOption" className="text-sm font-semibold text-foreground">
-                Choose Option
+                Choose Monthly Repayment Method
               </Label>
               <Select value={adminFeeOption} onValueChange={(value) => setAdminFeeOption(value as AdminFeeOption)}>
                 <SelectTrigger className="glass-input h-14 text-base text-foreground border-2 border-transparent hover:border-primary/30 transition-all duration-300">
@@ -182,7 +182,7 @@ const LoanCalculator = () => {
             </div>
 
             {/* Repayment Method (UI only, not used for rate) */}
-            <div className="space-y-4 group">
+            {/* <div className="space-y-4 group">
               <Label htmlFor="method" className="text-sm font-semibold text-foreground">
                 Choose Monthly Repayment Method
               </Label>
@@ -195,7 +195,7 @@ const LoanCalculator = () => {
                   <SelectItem value="Yoma Bank Deduction" className="text-base py-4 text-foreground hover:bg-secondary/10 rounded-lg m-1">Yoma Bank Deduction</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             {/* Currency */}
             <div className="space-y-4 group">
